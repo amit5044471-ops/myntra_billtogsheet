@@ -22,22 +22,44 @@ jobs:
 
       - name: Read .env and inject hash
         run: |
-          set -a; source .env; set +a
-          if [ -z "$SITE_PASSWORD" ]; then echo "SITE_PASSWORD missing in .env"; exit 1; fi
+          if [ ! -f .env ]; then
+            echo "::error::.env repo root me nahi mili"; exit 1
+          fi
+
+          getenv() {
+            tr -d '\r' < .env \
+              | grep -E "^[[:space:]]*$1[[:space:]]*=" \
+              | tail -n1 \
+              | sed -E "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*//; s/^\"(.*)\"$/\1/; s/^'(.*)'$/\1/"
+          }
+
+          SITE_PASSWORD="$(getenv SITE_PASSWORD)"
+          SESSION_HOURS="$(getenv SESSION_HOURS)"
+          SITE_NAME="$(getenv SITE_NAME)"
+
+          if [ -z "$SITE_PASSWORD" ]; then
+            echo "::error::SITE_PASSWORD .env me khali hai"; exit 1
+          fi
 
           HASH=$(printf '%s' "$SITE_PASSWORD" | sha256sum | cut -d' ' -f1)
           HOURS="${SESSION_HOURS:-12}"
           NAME="${SITE_NAME:-Tools}"
 
-          mkdir -p dist
-          cp -r src/* dist/
+          rm -rf dist && mkdir -p dist
+          cp -r src/. dist/
+          touch dist/.nojekyll
 
-          # replace placeholders in every html file
           find dist -name '*.html' -print0 | while IFS= read -r -d '' f; do
             sed -i "s|__PASS_HASH__|$HASH|g; s|__SESSION_HOURS__|$HOURS|g; s|__SITE_NAME__|$NAME|g" "$f"
           done
 
-          echo "Injected hash: ${HASH:0:12}..."
+          echo "Site name : $NAME"
+          echo "Hash start: ${HASH:0:12}"
+          if grep -rl '__PASS_HASH__' dist; then
+            echo "::error::placeholder replace nahi hua"; exit 1
+          else
+            echo "All placeholders replaced ✓"
+          fi
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
