@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>__SITE_NAME__ — Tools</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<style>
+  :root{--bg:#f4f5fa;--surface:#fff;--surface2:#f7f7fb;--border:#e7e8f0;--text:#14161f;
+    --muted:#6b7280;--primary:#4f46e5;--green:#16a34a;--shadow:0 10px 30px rgba(20,22,31,.06);}
+  *{box-sizing:border-box}
+  html{visibility:hidden}
+  body{margin:0;min-height:100vh;font-family:'Inter',system-ui,sans-serif;color:var(--text);
+    background:radial-gradient(900px 420px at 10% -10%,rgba(108,92,231,.06),transparent 60%),
+               radial-gradient(800px 420px at 100% 0%,rgba(236,72,153,.05),transparent 55%),var(--bg);}
+  .wrap{max-width:960px;margin:0 auto;padding:28px 24px 90px}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:20px;
+    box-shadow:var(--shadow);margin-bottom:22px;overflow:hidden}
+  .header{padding:20px 28px;display:flex;justify-content:space-between;align-items:center;
+    flex-wrap:wrap;gap:16px;border-bottom:1px solid var(--border)}
+  .hl{display:flex;align-items:center;gap:12px}
+  .logo-icon{width:44px;height:44px;border-radius:12px;background:var(--primary);color:#fff;
+    font-size:20px;display:grid;place-items:center;flex-shrink:0}
+  .hl h1{margin:0;font-size:21px;font-weight:700;letter-spacing:-.2px}
+  .hl .sub{color:var(--muted);font-size:13px;margin-top:2px}
+  .hr{display:flex;align-items:center;gap:9px}
+  .chip{background:#f0fdf4;color:#166534;border:1px solid #dcfce7;padding:7px 13px;
+    border-radius:40px;display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600}
+  .chip i{color:var(--green)}
+  .logout{border:0;border-radius:9px;padding:9px 13px;background:#fef2f2;color:#b91c1c;
+    font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;
+    align-items:center;gap:6px}
+  .logout:hover{background:#fee2e2}
+  .search-row{padding:16px 28px 22px}
+  .search-row input{width:100%;padding:11px 13px;border:1px solid var(--border);border-radius:10px;
+    background:var(--surface2);font-size:14px;font-family:inherit}
+  .search-row input:focus{outline:none;border-color:var(--primary);background:#fff}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
+  .tool{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    box-shadow:var(--shadow);padding:20px;display:flex;flex-direction:column;gap:10px;
+    text-decoration:none;color:inherit;transition:transform .1s,border-color .15s}
+  .tool:hover{transform:translateY(-2px);border-color:var(--primary)}
+  .tool.soon{opacity:.55;pointer-events:none}
+  .tool .ic{width:42px;height:42px;border-radius:11px;display:grid;place-items:center;
+    font-size:18px;color:#fff}
+  .tool h3{margin:0;font-size:15.5px;font-weight:700}
+  .tool p{margin:0;font-size:12.8px;color:var(--muted);line-height:1.55;flex:1}
+  .tool .tag{align-self:flex-start;font-size:11px;font-weight:700;padding:4px 9px;border-radius:100px;
+    background:var(--surface2);border:1px solid var(--border);color:var(--muted)}
+  .empty{grid-column:1/-1;text-align:center;color:var(--muted);font-size:13.5px;padding:30px}
+  footer{text-align:center;color:var(--muted);font-size:12px;padding:26px 0 10px}
+  @media (max-width:700px){.header{padding:16px}.search-row{padding:14px 16px 18px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="panel">
+    <div class="header">
+      <div class="hl">
+        <div class="logo-icon"><i class="fas fa-toolbox"></i></div>
+        <div>
+          <h1>__SITE_NAME__</h1>
+          <div class="sub">All your internal tools in one place</div>
+        </div>
+      </div>
+      <div class="hr">
+        <span class="chip"><i class="fas fa-shield-halved"></i> Signed in</span>
+        <button class="logout" id="logout"><i class="fas fa-right-from-bracket"></i> Log out</button>
+      </div>
+    </div>
+    <div class="search-row">
+      <input id="q" placeholder="Search tools…">
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</div>
+
+<footer>© 2026 __SITE_NAME__ · Private workspace</footer>
+
+<script>
+  const PASS_HASH = '__PASS_HASH__';
+  const SESSION_KEY = 'site_auth_v1';
+
+  // ---- GATE: no valid session → back to login ----
+  (function(){
+    let ok = false;
+    try{
+      const raw = localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY);
+      const s = raw ? JSON.parse(raw) : null;
+      // s.h !== PASS_HASH  →  password .env में बदल गया, session अपने आप invalid
+      ok = !!(s && s.h === PASS_HASH && s.exp > Date.now());
+    }catch(e){}
+    if (!ok){
+      localStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem(SESSION_KEY);
+      location.replace('index.html');
+    } else {
+      document.documentElement.style.visibility = 'visible';
+    }
+  })();
+
+  // ---- ADD NEW TOOLS HERE ----
+  const TOOLS = [
+    {
+      name: 'amitQr — Meesho QR Sticker',
+      desc: 'Auto-detects the store on each Meesho label, stamps your QR sticker, drops extra invoice pages, merges everything and exports an Excel report.',
+      href: 'tools/amitqr/index.html',
+      icon: 'fa-qrcode',
+      color: '#4f46e5',
+      tag: 'Live'
+    },
+    // {
+    //   name: 'Label Splitter',
+    //   desc: 'Split a bulk label PDF into one file per order.',
+    //   href: 'tools/splitter/index.html',
+    //   icon: 'fa-scissors', color:'#ec4899', tag:'Live'
+    // },
+    { name: 'More coming soon', desc: 'Your next tool will appear here.', href: '#',
+      icon: 'fa-plus', color: '#9ca3af', tag: 'Soon', soon: true }
+  ];
+
+  const grid = document.getElementById('grid');
+
+  function render(filter=''){
+    const f = filter.trim().toLowerCase();
+    const list = TOOLS.filter(t => !f || (t.name+' '+t.desc).toLowerCase().includes(f));
+    grid.innerHTML = list.length ? list.map(t => `
+      <a class="tool ${t.soon?'soon':''}" href="${t.href}">
+        <div class="ic" style="background:${t.color}"><i class="fas ${t.icon}"></i></div>
+        <h3>${t.name}</h3>
+        <p>${t.desc}</p>
+        <span class="tag">${t.tag}</span>
+      </a>`).join('') : `<div class="empty">No tools match “${filter}”.</div>`;
+  }
+  render();
+
+  document.getElementById('q').addEventListener('input', e => render(e.target.value));
+
+  document.getElementById('logout').addEventListener('click', () => {
+    localStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
+    location.replace('index.html');
+  });
+</script>
+</body>
+</html>
